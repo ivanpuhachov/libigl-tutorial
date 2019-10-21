@@ -20,7 +20,10 @@ int main(int argc, char *argv[]) {
     igl::massmatrix(V,F,igl::MASSMATRIX_TYPE_DEFAULT, M);
     igl::invert_diag(M, Minv); // invert the diagonal elements of a matrix
 
-//    K = (Minv*K).eval();
+    std::cout<<K.size() << std::endl;
+    std::cout<<M.size() << std::endl;
+
+    K = (Minv*K).eval(); // Divide by area to get integral average
 
     Eigen::MatrixXd C;
     igl::jet(K,true,C); // parameter true stands for normalization
