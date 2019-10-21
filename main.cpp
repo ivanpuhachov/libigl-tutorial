@@ -1,8 +1,10 @@
 #include <igl/opengl/glfw/Viewer.h>
+#include <igl/cotmatrix.h>
 #include <igl/gaussian_curvature.h>
 #include <igl/massmatrix.h>
 #include <igl/invert_diag.h>
 #include <igl/jet.h>
+#include <igl/principal_curvature.h>
 
 Eigen:: MatrixXd V;
 Eigen::MatrixXi F;
@@ -12,28 +14,37 @@ int main(int argc, char *argv[]) {
     std::cout<< "Vertices: " << std::endl << V.size() << std::endl;
     std::cout<< "Faces: " << std::endl << F.size() << std::endl;
 
-    Eigen::VectorXd K;
+//    Extract mean curvature from Laplace-Beltrami operator (cotmatrix)
+    Eigen::MatrixXd HN;
+    Eigen::SparseMatrix<double> L,M,Minv;
+    igl::cotmatrix(V,F,L);
+    igl::massmatrix(V,F,igl::MASSMATRIX_TYPE_VORONOI,M);
+    igl::invert_diag(M,Minv);
+    HN = -Minv * (L*V);
+    Eigen::VectorXd HH = HN.rowwise().norm();
 
-    igl::gaussian_curvature(V,F,K);
-    Eigen::SparseMatrix<double>M, Minv;
+//    Compute curvature directions via quadratic fitting
+    Eigen::MatrixXd PD1, PD2;
+    Eigen::VectorXd PV1, PV2;
+    igl::principal_curvature(V,F,PD1, PD2, PV1, PV2);
 
-    igl::massmatrix(V,F,igl::MASSMATRIX_TYPE_DEFAULT, M);
-    igl::invert_diag(M, Minv); // invert the diagonal elements of a matrix
+//    mean curvature from main curvatures
+    Eigen::MatrixXd H = 0.5*(PV1+PV2);
 
-    std::cout<<K.size() << std::endl;
-    std::cout<<M.size() << std::endl;
-
-    K = (Minv*K).eval(); // Divide by area to get integral average
-
-    Eigen::MatrixXd C;
-    igl::jet(K,true,C); // parameter true stands for normalization
 
 //    Plot the mesh
     igl::opengl::glfw::Viewer viewer;
-//    viewer.data().show_lines = false;
-
     viewer.data().set_mesh(V,F); // copies the mesh into viewer
-//    viewer.data().set_face_based(true); // Change the visualization mode, invalidating the cache if necessary
+
+    Eigen::MatrixXd C;
+    igl::parula(HH,true,C);
     viewer.data().set_colors(C);
+
+    const double avg = igl::avg_edge_length(V,F);
+
+    const Eigen::RowVector3d red(0.8,0.1,0.1), blue(0.1,0.1,0.8);
+    viewer.data().add_edges(V+PD2*avg, V-PD2*avg, red);
+    viewer.data().add_edges(V+PD1*avg, V-PD2*avg, blue);
+
     viewer.launch();
 }
