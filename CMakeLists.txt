@@ -11,6 +11,8 @@ option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 find_package(LIBIGL REQUIRED QUIET)
 
 # Add your project files
-file(GLOB SRCFILES *.cpp)
-add_executable(${PROJECT_NAME}_bin ${SRCFILES})
-target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl_glfw)
+add_executable(main_bin main.cpp)
+target_link_libraries(main_bin igl::core igl::opengl_glfw)
+
+add_executable(smoothing_bin smoothing.cpp)
+target_link_libraries(smoothing_bin igl::core igl::opengl_glfw)
