@@ -11,41 +11,45 @@
 
 Eigen::MatrixXd V, U;
 Eigen::MatrixXi F;
-Eigen::SparseMatrix<double> L, Minv; // Laplassian
+Eigen::SparseMatrix<double> L; // Laplassian
 
 const double dt = 3e-5;
 const double lambda = 2;
 
 bool on_key_down(igl::opengl::glfw::Viewer& viewer, char key, int modifier) {
     Eigen::SparseMatrix<double> A,M;
-    Eigen::VectorXd Areas, C;
-    Eigen::MatrixXd b;
-    Eigen::SparseLU<Eigen::SparseMatrix<double> > solver;
-    std::cout<<"zbs"<<std::endl;
+    Eigen::VectorXd Areas;
+    Eigen::MatrixXd b, C;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > solver;
     igl::massmatrix(U,F,igl::MASSMATRIX_TYPE_BARYCENTRIC, M);
-    b = M*U;
-    A = M - dt * lambda * L;
-    solver.compute(A);
+//    b = M*U;
+//    A = M - dt * lambda * L;
+//    solver.compute(A);
     Areas = M.diagonal();
     igl::jet(Areas, true, C);
     switch (key){
-        case '1': {
-//            A = M - dt * lambda * L;
-//            assert(M.cols() == U.rows());
-//            solver.compute(A);
+        case 'S': {
+            b = M*U;
+            A = M - dt * lambda * L;
+            assert(M.cols() == U.rows());
+            solver.compute(A);
             if (solver.info() != Eigen::Success) {
                 // decomposition failed
                 std::cout << "Decomposition failed" << std::endl;
                 return false;
             }
             U = solver.solve(M * U).eval();
-            std::cout << "Success" << std::endl;
             viewer.data().set_mesh(U, F); // copies the mesh into viewer
             viewer.data().set_colors(C);
             break;
         }
-        case '2': {
+        case 'R': {
             U = V;
+            igl::massmatrix(U,F,igl::MASSMATRIX_TYPE_BARYCENTRIC, M);
+            Areas = M.diagonal();
+            viewer.data().set_mesh(U, F);
+            igl::jet(Areas, true, C);
+            viewer.data().set_colors(C);
             break;
         }
         default: {
