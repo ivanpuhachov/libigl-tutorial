@@ -44,49 +44,6 @@ RotationList pose;
 double anim_t = 1.0;
 double anim_t_dir = -0.03;
 
-bool pre_draw(igl::opengl::glfw::Viewer & viewer)
-{
-    using namespace Eigen;
-    using namespace std;
-    if(viewer.core().is_animating)
-    {
-        // Interpolate pose and identity
-        RotationList anim_pose(pose.size());
-        for(int e = 0;e<pose.size();e++)
-        {
-            anim_pose[e] = pose[e].slerp(anim_t,Quaterniond::Identity());
-        }
-        // Propagate relative rotations via FK to retrieve absolute transformations
-        RotationList vQ;
-        vector<Vector3d> vT;
-        igl::forward_kinematics(C,BE,P,anim_pose,vQ,vT);
-        const int dim = C.cols();
-        MatrixXd T(BE.rows()*(dim+1),dim);
-        for(int e = 0;e<BE.rows();e++)
-        {
-            Affine3d a = Affine3d::Identity();
-            a.translate(vT[e]);
-            a.rotate(vQ[e]);
-            T.block(e*(dim+1),0,dim+1,dim) =
-                    a.matrix().transpose().block(0,0,dim+1,dim);
-        }
-        // Compute deformation via LBS as matrix multiplication
-        U = M*T;
-
-        // Also deform skeleton edges
-        MatrixXd CT;
-        MatrixXi BET;
-        igl::deform_skeleton(C,BE,T,CT,BET);
-
-        viewer.data().set_vertices(U);
-        viewer.data().set_edges(CT,BET,sea_green);
-        viewer.data().compute_normals();
-        anim_t += anim_t_dir;
-        anim_t_dir *= (anim_t>=1.0 || anim_t<=0.0?-1.0:1.0);
-    }
-    return false;
-}
-
 void set_color(igl::opengl::glfw::Viewer &viewer)
 {
     Eigen::MatrixXd C;
@@ -98,9 +55,6 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 {
     switch(key)
     {
-        case ' ':
-            viewer.core().is_animating = !viewer.core().is_animating;
-            break;
         case '.':
             selected++;
             selected = std::min(std::max(selected,0),(int)W.cols()-1);
@@ -222,17 +176,11 @@ int main(int argc, char *argv[])
 {
     using namespace Eigen;
     using namespace std;
-    igl::readMESH("../data/hand.mesh",V,T,F);
+    igl::readMESH("../cpp_input/mesh.mesh",V,T,F);
     U=V;
-    igl::readTGF("../data/hand.tgf",C,BE);
+    igl::readTGF("../cpp_input/mesh.tgf",C,BE);
     // retrieve parents for forward kinematics
     igl::directed_edge_parents(BE,P);
-
-    // Read pose as matrix of quaternions per row
-    MatrixXd Q;
-    igl::readDMAT("../data/hand-pose.dmat",Q);
-    igl::column_to_quats(Q,pose);
-    assert(pose.size() == BE.rows());
 
     // List of boundary indices (aka fixed value indices into VV)
     VectorXi b;
@@ -272,7 +220,6 @@ int main(int argc, char *argv[])
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1;
-    viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &key_down;
     viewer.core().is_animating = false;
     viewer.core().animation_max_fps = 30.;
