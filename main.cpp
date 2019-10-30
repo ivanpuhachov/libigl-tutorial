@@ -4,17 +4,12 @@
 #undef IGL_STATIC_LIBRARY
 #endif
 #endif
-
+#include <igl/slice.h>
 #include <igl/boundary_conditions.h>
-#include <igl/colon.h>
-#include <igl/column_to_quats.h>
 #include <igl/directed_edge_parents.h>
-#include <igl/forward_kinematics.h>
 #include <igl/jet.h>
 #include <igl/lbs_matrix.h>
-#include <igl/deform_skeleton.h>
 #include <igl/normalize_row_sums.h>
-#include <igl/readDMAT.h>
 #include <igl/readMESH.h>
 #include <igl/readTGF.h>
 #include <igl/opengl/glfw/Viewer.h>
@@ -37,12 +32,17 @@ std::vector<Eigen::Quaterniond,Eigen::aligned_allocator<Eigen::Quaterniond> >
 
 const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
 int selected = 0;
-Eigen::MatrixXd V,W,U,C,M;
-Eigen::MatrixXi T,F,BE;
+Eigen::MatrixXd V,W,U,C,M,u_curve;
+Eigen::MatrixXi T,F,BE,f_curve;
 Eigen::VectorXi P;
 RotationList pose;
 double anim_t = 1.0;
 double anim_t_dir = -0.03;
+
+int magic_vertices_start = 806;
+int magic_vertices_step = 434;
+int magic_faces_start = 2044;
+int magic_faces_step = 868;
 
 void set_color(igl::opengl::glfw::Viewer &viewer)
 {
@@ -197,30 +197,42 @@ int main(int argc, char *argv[])
     {
         return EXIT_FAILURE;
     }
-
-    //MatrixXd Vsurf = V.topLeftCorner(F.maxCoeff()+1,V.cols());
-    //MatrixXd Wsurf;
-    //if(!igl::bone_heat(Vsurf,F,C,VectorXi(),BE,MatrixXi(),Wsurf))
-    //{
-    //  return false;
-    //}
-    //W.setConstant(V.rows(),Wsurf.cols(),1);
-    //W.topLeftCorner(Wsurf.rows(),Wsurf.cols()) = Wsurf = Wsurf = Wsurf = Wsurf;
-
     // Normalize weights to sum to one
     igl::normalize_row_sums(W,W);
     // precompute linear blend skinning matrix
     igl::lbs_matrix(V,W,M);
+    // make magic with visualization
+    u_curve = U.block(magic_vertices_start,0,2*magic_vertices_step,3);
+//    std::cout<<u_curve <<std::endl;
+//    f_curve = F.block(magic_faces_start, 0, magic_faces_step,3);
+//    Eigen::MatrixXi mat = Eigen::MatrixXi::Constant(magic_faces_step,3,magic_vertices_start-1);
+//    f_curve = f_curve - mat;
+    f_curve = Eigen::MatrixXi::Zero(magic_faces_step,3);
+    for (int i=0;i<magic_vertices_step;i++){
+        f_curve(i,0) = i % magic_vertices_step;
+        f_curve(i, 1) = (i+1) % magic_vertices_step + magic_vertices_step;
+        f_curve(i, 2) = (i+1) % magic_vertices_step;
+    }
+    for (int i=magic_vertices_step;i<2*magic_vertices_step;i++){
+        f_curve(i,0) = i % magic_vertices_step;
+        f_curve(i, 2) = (i+1) % magic_vertices_step + magic_vertices_step;
+        f_curve(i, 1) = i;
+    }
 
+//    std::cout<<f_curve <<std::endl;
+//    u_curve = U.block(0,0,magic_vertices_start,3);
+//    f_curve = F.block(0,0,magic_faces_start,3);
+//    u_curve=U;
+//    f_curve=F;
     // Plot the mesh with pseudocolors
     igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(U, F);
-    set_color(viewer);
+    viewer.data().set_mesh(u_curve, f_curve);
+//    set_color(viewer);
     viewer.data().set_edges(C,BE,sea_green);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1;
-    viewer.callback_key_down = &key_down;
+//    viewer.callback_key_down = &key_down;
     viewer.core().is_animating = false;
     viewer.core().animation_max_fps = 30.;
     cout<<
@@ -230,4 +242,3 @@ int main(int argc, char *argv[])
     viewer.launch();
     return EXIT_SUCCESS;
 }
-
