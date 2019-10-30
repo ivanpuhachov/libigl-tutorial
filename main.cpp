@@ -5,31 +5,20 @@
 #endif
 #endif
 
-#include <igl/boundary_conditions.h>
-#include <igl/colon.h>
-#include <igl/column_to_quats.h>
-#include <igl/directed_edge_parents.h>
-#include <igl/forward_kinematics.h>
+
 #include <igl/jet.h>
-#include <igl/lbs_matrix.h>
-#include <igl/deform_skeleton.h>
-#include <igl/normalize_row_sums.h>
-#include <igl/readDMAT.h>
-#include <igl/readMESH.h>
-#include <igl/readTGF.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/bbw.h>
 #include <igl/harmonic.h>
 #include <mutex>
 #include <iostream>
 #include <igl/active_set.h>
-//#include <igl/embree/bone_heat.h>
+#include <igl/triangle/triangulate.h>
+#include <igl/min_quad_with_fixed.h>
 
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
 #include <vector>
-#include <algorithm>
-#include <iostream>
 
 typedef
 std::vector<Eigen::Quaterniond,Eigen::aligned_allocator<Eigen::Quaterniond> >
@@ -176,58 +165,37 @@ int main(int argc, char *argv[])
 {
     using namespace Eigen;
     using namespace std;
-    igl::readMESH("../cpp_input/mesh.mesh",V,T,F);
-    U=V;
-    igl::readTGF("../cpp_input/mesh.tgf",C,BE);
-    // retrieve parents for forward kinematics
-    igl::directed_edge_parents(BE,P);
 
-    // List of boundary indices (aka fixed value indices into VV)
-    VectorXi b;
-    // List of boundary conditions of each weight function
-    MatrixXd bc;
-    igl::boundary_conditions(V,T,C,VectorXi(),BE,MatrixXi(),b,bc);
+    MatrixXd V;
+    MatrixXi E;
 
-    // compute BBW weights matrix
-    igl::BBWData bbw_data;
-    // only a few iterations for sake of demo
-    bbw_data.active_set_params.max_iter = 8;
-    bbw_data.verbosity = 2;
-    if(!my_bbw(V,T,b,bc,bbw_data,W))
-    {
-        return EXIT_FAILURE;
-    }
+    MatrixXd V2;
+    MatrixXi F2;
 
-    //MatrixXd Vsurf = V.topLeftCorner(F.maxCoeff()+1,V.cols());
-    //MatrixXd Wsurf;
-    //if(!igl::bone_heat(Vsurf,F,C,VectorXi(),BE,MatrixXi(),Wsurf))
-    //{
-    //  return false;
-    //}
-    //W.setConstant(V.rows(),Wsurf.cols(),1);
-    //W.topLeftCorner(Wsurf.rows(),Wsurf.cols()) = Wsurf = Wsurf = Wsurf = Wsurf;
+    V.resize(5,2);
+    E.resize(4,2);
+    V << -1,-1, -1,1, 1,1, 1,-1, 0,0;
+    E << 0,1,1,2,2,3,3,0;
+    igl::triangle::triangulate(V,E,MatrixXd(),"a0.005q",V2,F2);
 
-    // Normalize weights to sum to one
-    igl::normalize_row_sums(W,W);
-    // precompute linear blend skinning matrix
-    igl::lbs_matrix(V,W,M);
+    int n = V.rows();
 
-    // Plot the mesh with pseudocolors
+    SparseMatrix<double> Q,Aeq;
+    igl::harmonic(V2,F2,2,Q);
+
+    VectorXd B, bc(1,1), Beq, Z;
+    VectorXi b(1,1);
+    b << 4;
+    bc << 1;
+    B = VectorXd::Zero(n,1);
+
+    igl::min_quad_with_fixed_data<double> mqwf;
+    igl::min_quad_with_fixed_precompute(Q,b,Aeq,true,mqwf);
+    igl::min_quad_with_fixed_solve(mqwf,B,bc,Beq,Z);
+
+    // Plot the generated mesh
     igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(U, F);
-    set_color(viewer);
-    viewer.data().set_edges(C,BE,sea_green);
-    viewer.data().show_lines = false;
-    viewer.data().show_overlay_depth = false;
-    viewer.data().line_width = 1;
-    viewer.callback_key_down = &key_down;
-    viewer.core().is_animating = false;
-    viewer.core().animation_max_fps = 30.;
-    cout<<
-        "Press '.' to show next weight function."<<endl<<
-        "Press ',' to show previous weight function."<<endl<<
-        "Press [space] to toggle animation."<<endl;
+    viewer.data().set_mesh(V2,F2);
     viewer.launch();
-    return EXIT_SUCCESS;
 }
 
