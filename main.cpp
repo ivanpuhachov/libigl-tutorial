@@ -48,11 +48,11 @@ int magic_faces_step = 868;
 
 void set_color(igl::opengl::glfw::Viewer &viewer)
 {
-    Eigen::MatrixXd C;
+    Eigen::MatrixXd CC;
     u_curve = U.block(magic_vertices_start+layer*magic_vertices_step,0,2*magic_vertices_step,3);
-    igl::jet(W.block(magic_vertices_start+layer*magic_vertices_step, selected,2*magic_vertices_step,1).eval(),true,C);
+    igl::jet(W.block(magic_vertices_start+layer*magic_vertices_step, selected,2*magic_vertices_step,1).eval(),true,CC);
     viewer.data().set_mesh(u_curve, f_curve);
-    viewer.data().set_colors(C);
+    viewer.data().set_colors(CC);
 }
 
 bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
@@ -115,7 +115,7 @@ bool my_bbw(
     // No linear terms
     VectorXd c = VectorXd::Zero(n);
     // No linear constraints
-    SparseMatrix<double> A(0,n),Aeq(0,n),Aieq(0,n);
+    SparseMatrix<double> A(0, n),Aeq(0, n),Aieq(0, n);
     VectorXd Beq(0,1),Bieq(0,1);
     // Upper and lower box constraints (Constant bounds)
     VectorXd ux = VectorXd::Ones(n);
@@ -256,6 +256,11 @@ int main(int argc, char *argv[])
 //    viewer.data().set_colors(C);
 
     set_color(viewer);
+
+    Eigen::MatrixXd pp;
+    pp = U.block(magic_vertices_start, 0, 1, 3);
+    viewer.data().add_points(pp,sea_green);
+
     viewer.data().set_edges(C,BE,sea_green);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
