@@ -39,6 +39,8 @@ RotationList pose;
 double anim_t = 1.0;
 double anim_t_dir = -0.03;
 
+int layer =0;
+
 int magic_vertices_start = 806;
 int magic_vertices_step = 434;
 int magic_faces_start = 2044;
@@ -47,7 +49,9 @@ int magic_faces_step = 868;
 void set_color(igl::opengl::glfw::Viewer &viewer)
 {
     Eigen::MatrixXd C;
-    igl::jet(W.col(selected).eval(),true,C);
+    u_curve = U.block(magic_vertices_start+layer*magic_vertices_step,0,2*magic_vertices_step,3);
+    igl::jet(W.block(magic_vertices_start+layer*magic_vertices_step, selected,2*magic_vertices_step,1).eval(),true,C);
+    viewer.data().set_mesh(u_curve, f_curve);
     viewer.data().set_colors(C);
 }
 
@@ -65,6 +69,25 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
             selected = std::min(std::max(selected,0),(int)W.cols()-1);
             set_color(viewer);
             break;
+        case '2':
+            layer++;
+            if (layer>=10) {
+                layer = 0;
+            }
+            set_color(viewer);
+            break;
+        case '1':
+            layer--;
+            if (layer<=0) {
+                layer = 9;
+            }
+            set_color(viewer);
+            break;
+        default:
+            std::cout<<key<<std::endl;
+            std::cout<<layer<<std::endl;
+            std::cout<<selected<<std::endl;
+
     }
     return true;
 }
@@ -202,7 +225,7 @@ int main(int argc, char *argv[])
     // precompute linear blend skinning matrix
     igl::lbs_matrix(V,W,M);
     // make magic with visualization
-    u_curve = U.block(magic_vertices_start,0,2*magic_vertices_step,3);
+    u_curve = U.block(magic_vertices_start+layer*magic_vertices_step,0,2*magic_vertices_step,3);
 //    std::cout<<u_curve <<std::endl;
 //    f_curve = F.block(magic_faces_start, 0, magic_faces_step,3);
 //    Eigen::MatrixXi mat = Eigen::MatrixXi::Constant(magic_faces_step,3,magic_vertices_start-1);
@@ -227,12 +250,17 @@ int main(int argc, char *argv[])
     // Plot the mesh with pseudocolors
     igl::opengl::glfw::Viewer viewer;
     viewer.data().set_mesh(u_curve, f_curve);
-//    set_color(viewer);
+
+//    Eigen::MatrixXd C;
+//    igl::jet(W.block(magic_vertices_start+layer*magic_vertices_step,selected,2*magic_vertices_step,1).eval(),true,C);
+//    viewer.data().set_colors(C);
+
+    set_color(viewer);
     viewer.data().set_edges(C,BE,sea_green);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1;
-//    viewer.callback_key_down = &key_down;
+    viewer.callback_key_down = &key_down;
     viewer.core().is_animating = false;
     viewer.core().animation_max_fps = 30.;
     cout<<
