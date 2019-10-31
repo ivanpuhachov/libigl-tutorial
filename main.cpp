@@ -22,6 +22,8 @@
 
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 
+#include <igl/boundary_conditions.h>
+
 typedef
 std::vector<Eigen::Quaterniond,Eigen::aligned_allocator<Eigen::Quaterniond> >
         RotationList;
@@ -168,27 +170,27 @@ int main(int argc, char *argv[])
     using namespace Eigen;
     using namespace std;
 
-    MatrixXd V;
+    MatrixXd V_init;
     MatrixXi E;
 
-    MatrixXd V2;
-    MatrixXi F2;
+    MatrixXd V;
+    MatrixXi F;
 
-    V.resize(5,2);
+    V_init.resize(7,2);
     E.resize(4,2);
-    V << -1,-1, -1,1, 1,1, 1,-1, 0,0;
+    V_init << -1,-1, -1,1, 1,1, 1,-1, -0.5,-0.5, 0.5, 0.5, 0.5,-0.5;
     E << 0,1, 1,2, 2,3, 3,0;
-    igl::triangle::triangulate(V,E,MatrixXd(),"a0.0005q",V2,F2);
+    igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.0005q",V,F);
 
-    int n = V2.rows();
+    int n = V.rows();
 
     SparseMatrix<double> Q,Aeq;
-    igl::harmonic(V2,F2,2,Q);
+    igl::harmonic(V,F,4,Q);
 
-    VectorXd B, bc(5,1), Beq(n,1), Z;
-    VectorXi b(5,1);
-    b << 0,1,2,3,4;
-    bc << 0,0,0,0,1.0;
+    VectorXd B, bc(1,1), Beq(n,1), Z;
+    VectorXi b(1,1);
+    b << 4;
+    bc << 1.0;
     B = VectorXd::Zero(n,1);
 
     igl::min_quad_with_fixed_data<double> mqwf;
@@ -200,14 +202,14 @@ int main(int argc, char *argv[])
 
 
     MatrixXd V3d(n,3);
-    V3d.block(0,0,n,2) = V2;
+    V3d.block(0,0,n,2) = V;
     V3d.block(0,2,n,1) = Z.col(0);
 
     // Plot the generated mesh
     igl::opengl::glfw::Viewer viewer;
     igl::opengl::glfw::imgui::ImGuiMenu menu;
     viewer.plugins.push_back(&menu);
-    viewer.data().set_mesh(V3d,F2);
+    viewer.data().set_mesh(V3d,F);
 
     MatrixXd CC;
     igl::jet(Z.col(0),true,CC);
