@@ -20,6 +20,8 @@
 #include <Eigen/StdVector>
 #include <vector>
 
+#include <igl/opengl/glfw/imgui/ImGuiMenu.h>
+
 typedef
 std::vector<Eigen::Quaterniond,Eigen::aligned_allocator<Eigen::Quaterniond> >
         RotationList;
@@ -176,17 +178,17 @@ int main(int argc, char *argv[])
     E.resize(4,2);
     V << -1,-1, -1,1, 1,1, 1,-1, 0,0;
     E << 0,1, 1,2, 2,3, 3,0;
-    igl::triangle::triangulate(V,E,MatrixXd(),"a0.002q",V2,F2);
+    igl::triangle::triangulate(V,E,MatrixXd(),"a0.0005q",V2,F2);
 
     int n = V2.rows();
 
     SparseMatrix<double> Q,Aeq;
     igl::harmonic(V2,F2,2,Q);
 
-    VectorXd B, bc(1,1), Beq(n,1), Z;
-    VectorXi b(1,1);
-    b << 4;
-    bc << 1;
+    VectorXd B, bc(5,1), Beq(n,1), Z;
+    VectorXi b(5,1);
+    b << 0,1,2,3,4;
+    bc << 0,0,0,0,1.0;
     B = VectorXd::Zero(n,1);
 
     igl::min_quad_with_fixed_data<double> mqwf;
@@ -195,17 +197,22 @@ int main(int argc, char *argv[])
 
     std::cout<<n<<std::endl;
     std::cout<<Z.size()<<std::endl;
-    std::cout<<Z(4,0)<<std::endl;
 
+
+    MatrixXd V3d(n,3);
+    V3d.block(0,0,n,2) = V2;
+    V3d.block(0,2,n,1) = Z.col(0);
 
     // Plot the generated mesh
     igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(V2,F2);
+    igl::opengl::glfw::imgui::ImGuiMenu menu;
+    viewer.plugins.push_back(&menu);
+    viewer.data().set_mesh(V3d,F2);
 
     MatrixXd CC;
     igl::jet(Z.col(0),true,CC);
     viewer.data().set_colors(CC);
-
+    viewer.data().show_lines = false;
     viewer.launch();
 }
 
