@@ -175,15 +175,15 @@ int main(int argc, char *argv[])
     V.resize(5,2);
     E.resize(4,2);
     V << -1,-1, -1,1, 1,1, 1,-1, 0,0;
-    E << 0,1,1,2,2,3,3,0;
-    igl::triangle::triangulate(V,E,MatrixXd(),"a0.005q",V2,F2);
+    E << 0,1, 1,2, 2,3, 3,0;
+    igl::triangle::triangulate(V,E,MatrixXd(),"a0.002q",V2,F2);
 
-    int n = V.rows();
+    int n = V2.rows();
 
     SparseMatrix<double> Q,Aeq;
     igl::harmonic(V2,F2,2,Q);
 
-    VectorXd B, bc(1,1), Beq, Z;
+    VectorXd B, bc(1,1), Beq(n,1), Z;
     VectorXi b(1,1);
     b << 4;
     bc << 1;
@@ -193,9 +193,19 @@ int main(int argc, char *argv[])
     igl::min_quad_with_fixed_precompute(Q,b,Aeq,true,mqwf);
     igl::min_quad_with_fixed_solve(mqwf,B,bc,Beq,Z);
 
+    std::cout<<n<<std::endl;
+    std::cout<<Z.size()<<std::endl;
+    std::cout<<Z(4,0)<<std::endl;
+
+
     // Plot the generated mesh
     igl::opengl::glfw::Viewer viewer;
     viewer.data().set_mesh(V2,F2);
+
+    MatrixXd CC;
+    igl::jet(Z.col(0),true,CC);
+    viewer.data().set_colors(CC);
+
     viewer.launch();
 }
 
