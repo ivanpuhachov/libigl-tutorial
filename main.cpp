@@ -18,7 +18,7 @@
 #include <mutex>
 #include <iostream>
 #include <igl/active_set.h>
-//#include <igl/embree/bone_heat.h>
+
 
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
@@ -26,16 +26,14 @@
 #include <algorithm>
 #include <iostream>
 
-typedef
-std::vector<Eigen::Quaterniond,Eigen::aligned_allocator<Eigen::Quaterniond> >
-        RotationList;
+#include <igl/in_element.h>
+#include <igl/barycentric_coordinates.h>
 
 const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
 int selected = 0;
 Eigen::MatrixXd V,W,U,C,M,u_curve;
 Eigen::MatrixXi T,F,BE,f_curve;
 Eigen::VectorXi P;
-RotationList pose;
 double anim_t = 1.0;
 double anim_t_dir = -0.03;
 
@@ -267,6 +265,21 @@ int main(int argc, char *argv[])
     Eigen::MatrixXd CC;
     igl::jet(W.block(5972, selected,30,1).eval(),true,CC);
     viewer.data().set_points(pp,CC);
+
+    Eigen::MatrixXd newp(2,3);
+    newp<<170,80,5, 120,60,5;
+
+//    std::cout<<V.cols()<<std::endl;
+//    std::cout<<T.cols()<<std::endl;
+
+    igl::AABB<MatrixXd,3> tree;
+    tree.init(V,T);
+    VectorXi I;
+
+    igl::in_element(V,T,newp,tree,I);
+    std::cout<<I<<std::endl;
+
+
 
     viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
     viewer.data().show_lines = false;
