@@ -31,38 +31,24 @@
 #include <igl/barycentric_coordinates.h>
 
 const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
-int selected = 8;
+unsigned int selected = 8;
 Eigen::MatrixXd V,W,U,C,M;
 Eigen::MatrixXi T,F,BE;
 Eigen::VectorXi P;
 
-int layer =0;
+unsigned int layer =0;
 
 Eigen::MatrixXd pointsToPlot(20,3);
 igl::AABB<Eigen::MatrixXd,3> tree;
 Eigen::MatrixXi TetpointsToPlot; // indices of vertices associated to tetrahedra where point is located
+Eigen::MatrixXd barCoordsPoints;
+Eigen::VectorXd WpointsToPlot;
 
-void updateEdges(igl::opengl::glfw::Viewer &viewer)
-{
-    viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
-}
+void weightPoints(igl::opengl::glfw::Viewer &viewer) {
+    WpointsToPlot = Eigen::VectorXd::Zero(pointsToPlot.rows());
 
-void updatePoints(igl::opengl::glfw::Viewer &viewer)
-{
-    Eigen::VectorXd WpointsToPlot = Eigen::VectorXd::Zero(pointsToPlot.rows());
-
-    tree.init(V,T); // initialize tree
-    Eigen::VectorXi IndexpointsToPlot; // indices of tetrahedra where points are located
-    igl::in_element(V,T,pointsToPlot,tree,IndexpointsToPlot); // fill indices
-
-    igl::slice(T,IndexpointsToPlot,1,TetpointsToPlot);
-
-    Eigen::MatrixXd tetA,tetB,tetC,tetD, Wabcd(pointsToPlot.rows(),4);
+    Eigen::MatrixXd Wabcd(pointsToPlot.rows(),4);
     Eigen::VectorXd Wa, Wb, Wc, Wd;
-    igl::slice(V,TetpointsToPlot.col(0),1,tetA);
-    igl::slice(V,TetpointsToPlot.col(1),1,tetB);
-    igl::slice(V,TetpointsToPlot.col(2),1,tetC);
-    igl::slice(V,TetpointsToPlot.col(3),1,tetD);
 
     igl::slice(W,TetpointsToPlot.col(0),Eigen::VectorXi::Ones(1)*selected,Wa);
     igl::slice(W,TetpointsToPlot.col(1),Eigen::VectorXi::Ones(1)*selected,Wb);
@@ -74,11 +60,7 @@ void updatePoints(igl::opengl::glfw::Viewer &viewer)
     Wabcd.col(2) = Wc;
     Wabcd.col(3) = Wd;
 
-    Eigen::MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
-    igl::barycentric_coordinates(pointsToPlot,tetA,tetB,tetC,tetD,barCoordsPoints);
-
-
-//    MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
+    //    MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
     std::cout<<Wabcd.size()<<std::endl;
 
     Eigen::Array2Xd res;
@@ -94,7 +76,34 @@ void updatePoints(igl::opengl::glfw::Viewer &viewer)
     Eigen::MatrixXd CC;
     igl::parula(WpointsToPlot.eval(),false,CC);
 
-    viewer.data().add_points(pointsToPlot,CC);
+    viewer.data().set_points(pointsToPlot,CC);
+}
+
+void updateEdges(igl::opengl::glfw::Viewer &viewer)
+{
+    viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
+    weightPoints(viewer);
+}
+
+void updatePoints(igl::opengl::glfw::Viewer &viewer)
+{
+    pointsToPlot.col(2) = Eigen::VectorXd::Ones(pointsToPlot.rows()) * (1+2*layer);
+
+    Eigen::VectorXi IndexpointsToPlot; // indices of tetrahedra where points are located
+    igl::in_element(V,T,pointsToPlot,tree,IndexpointsToPlot); // fill indices
+
+    igl::slice(T,IndexpointsToPlot,1,TetpointsToPlot);
+
+    Eigen::MatrixXd tetA,tetB,tetC,tetD, Wabcd(pointsToPlot.rows(),4);
+    Eigen::VectorXd Wa, Wb, Wc, Wd;
+    igl::slice(V,TetpointsToPlot.col(0),1,tetA);
+    igl::slice(V,TetpointsToPlot.col(1),1,tetB);
+    igl::slice(V,TetpointsToPlot.col(2),1,tetC);
+    igl::slice(V,TetpointsToPlot.col(3),1,tetD);
+
+    igl::barycentric_coordinates(pointsToPlot,tetA,tetB,tetC,tetD,barCoordsPoints);
+
+    weightPoints(viewer);
 }
 
 bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
@@ -103,26 +112,22 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
     {
         case '.':
             selected++;
-            selected = std::min(std::max(selected,0),(int)W.cols()-1);
+            selected %= W.cols();
             updateEdges(viewer);
             break;
         case ',':
             selected--;
-            selected = std::min(std::max(selected,0),(int)W.cols()-1);
+            selected %= W.cols();
             updateEdges(viewer);
             break;
         case 'N':
             layer++;
-            if (layer>=10) {
-                layer = 0;
-            }
+            layer %= 10;
             updatePoints(viewer);
             break;
         case 'M':
             layer--;
-            if (layer<=0) {
-                layer = 9;
-            }
+            layer%=10;
             updatePoints(viewer);
             break;
         default:
@@ -268,7 +273,7 @@ int main(int argc, char *argv[])
     // Normalize weights to sum to one
     igl::normalize_row_sums(W,W);
 
-
+    tree.init(V,T); // initialize tree to search through tetrahedra
 
     Eigen::MatrixXd u_curve;
     Eigen::MatrixXi f_curve;
