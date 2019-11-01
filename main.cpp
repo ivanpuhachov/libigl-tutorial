@@ -279,6 +279,21 @@ int main(int argc, char *argv[])
     igl::in_element(V,T,newp,tree,I);
     std::cout<<I<<std::endl;
 
+    MatrixXi TetPoints;
+    igl::slice(T,I,1,TetPoints);
+
+    std::cout<<TetPoints<<std::endl;
+
+    MatrixXd tetA,tetB,tetC,tetD;
+    igl::slice(V,TetPoints.col(0),1,tetA);
+    igl::slice(V,TetPoints.col(1),1,tetB);
+    igl::slice(V,TetPoints.col(2),1,tetC);
+    igl::slice(V,TetPoints.col(3),1,tetD);
+
+    MatrixXd barCoordsPoints;
+    igl::barycentric_coordinates(newp,tetA,tetB,tetC,tetD,barCoordsPoints);
+    std::cout<<barCoordsPoints<<std::endl;
+
 
 
     viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
