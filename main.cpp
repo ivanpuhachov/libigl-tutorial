@@ -57,6 +57,7 @@ void set_color(igl::opengl::glfw::Viewer &viewer)
     pp = U.block(5972+63*layer, 0, 30, 3);
     igl::jet(W.block(5972+63*layer, selected,30,1).eval(),true,CC);
     viewer.data().set_points(pp,CC);
+    viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
 }
 
 bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
@@ -267,7 +268,7 @@ int main(int argc, char *argv[])
     igl::jet(W.block(5972, selected,30,1).eval(),true,CC);
     viewer.data().set_points(pp,CC);
 
-    viewer.data().set_edges(C,BE,sea_green);
+    viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1;
