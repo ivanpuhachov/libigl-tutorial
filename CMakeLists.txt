@@ -11,6 +11,8 @@ option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 find_package(LIBIGL REQUIRED QUIET)
 
 # Add your project files
-file(GLOB SRCFILES *.cpp)
-add_executable(${PROJECT_NAME}_bin ${SRCFILES})
-target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl_glfw)
+add_executable(example_bin main.cpp)
+target_link_libraries(example_bin igl::core igl::opengl_glfw)
+
+add_executable(plotpoints_bin bbw.cpp)
+target_link_libraries(plotpoints_bin igl::core igl::opengl_glfw)
