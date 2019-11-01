@@ -53,6 +53,10 @@ void set_color(igl::opengl::glfw::Viewer &viewer)
     igl::jet(W.block(magic_vertices_start+layer*magic_vertices_step, selected,2*magic_vertices_step,1).eval(),true,CC);
     viewer.data().set_mesh(u_curve, f_curve);
     viewer.data().set_colors(CC);
+    Eigen::MatrixXd pp;
+    pp = U.block(5972+63*layer, 0, 30, 3);
+    igl::jet(W.block(5972+63*layer, selected,30,1).eval(),true,CC);
+    viewer.data().set_points(pp,CC);
 }
 
 bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
@@ -258,8 +262,10 @@ int main(int argc, char *argv[])
     set_color(viewer);
 
     Eigen::MatrixXd pp;
-    pp = U.block(magic_vertices_start, 0, 1, 3);
-    viewer.data().add_points(pp,sea_green);
+    pp = U.block(5972, 0, 30, 3);
+    Eigen::MatrixXd CC;
+    igl::jet(W.block(5972, selected,30,1).eval(),true,CC);
+    viewer.data().set_points(pp,CC);
 
     viewer.data().set_edges(C,BE,sea_green);
     viewer.data().show_lines = false;

@@ -36,3 +36,4 @@ build/*
 # CLion
 .idea/
 cmake-build-debug/
+cpp_input/
