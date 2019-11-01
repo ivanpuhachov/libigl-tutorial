@@ -32,34 +32,23 @@
 
 const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
 int selected = 8;
-Eigen::MatrixXd V,W,U,C,M,u_curve;
-Eigen::MatrixXi T,F,BE,f_curve;
+Eigen::MatrixXd V,W,U,C,M;
+Eigen::MatrixXi T,F,BE;
 Eigen::VectorXi P;
-double anim_t = 1.0;
-double anim_t_dir = -0.03;
 
 int layer =0;
 
-int magic_vertices_start = 806;
-int magic_vertices_step = 434;
-int magic_faces_start = 2044;
-int magic_faces_step = 868;
-
-Eigen::MatrixXd pointsToPlot(2,3);
+Eigen::MatrixXd pointsToPlot(20,3);
 igl::AABB<Eigen::MatrixXd,3> tree;
 Eigen::MatrixXi TetpointsToPlot; // indices of vertices associated to tetrahedra where point is located
 
-void set_color(igl::opengl::glfw::Viewer &viewer)
+void updateEdges(igl::opengl::glfw::Viewer &viewer)
 {
-    Eigen::MatrixXd CC;
-    u_curve = U.block(magic_vertices_start+layer*magic_vertices_step,0,2*magic_vertices_step,3);
-    igl::jet(W.block(magic_vertices_start+layer*magic_vertices_step, selected,2*magic_vertices_step,1).eval(),true,CC);
-    viewer.data().set_mesh(u_curve, f_curve);
-    viewer.data().set_colors(CC);
-    Eigen::MatrixXd pp;
-    pp = U.block(5972+63*layer, 0, 30, 3);
-    igl::parula(W.block(5972+63*layer, selected,30,1).eval(),false,CC);
-    viewer.data().set_points(pp,CC);
+    viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
+}
+
+void updatePoints(igl::opengl::glfw::Viewer &viewer)
+{
     viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
 }
 
@@ -70,26 +59,26 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
         case '.':
             selected++;
             selected = std::min(std::max(selected,0),(int)W.cols()-1);
-            set_color(viewer);
+            updateEdges(viewer);
             break;
         case ',':
             selected--;
             selected = std::min(std::max(selected,0),(int)W.cols()-1);
-            set_color(viewer);
+            updateEdges(viewer);
             break;
         case '2':
             layer++;
             if (layer>=10) {
                 layer = 0;
             }
-            set_color(viewer);
+            updatePoints(viewer);
             break;
         case '1':
             layer--;
             if (layer<=0) {
                 layer = 9;
             }
-            set_color(viewer);
+            updatePoints(viewer);
             break;
         default:
             std::cout<<key<<std::endl;
@@ -230,59 +219,13 @@ int main(int argc, char *argv[])
     }
     // Normalize weights to sum to one
     igl::normalize_row_sums(W,W);
-    // precompute linear blend skinning matrix
-    igl::lbs_matrix(V,W,M);
-    // make magic with visualization
-    u_curve = U.block(magic_vertices_start+layer*magic_vertices_step,0,2*magic_vertices_step,3);
-//    std::cout<<u_curve <<std::endl;
-//    f_curve = F.block(magic_faces_start, 0, magic_faces_step,3);
-//    Eigen::MatrixXi mat = Eigen::MatrixXi::Constant(magic_faces_step,3,magic_vertices_start-1);
-//    f_curve = f_curve - mat;
-    f_curve = Eigen::MatrixXi::Zero(magic_faces_step,3);
-    for (int i=0;i<magic_vertices_step;i++){
-        f_curve(i,0) = i % magic_vertices_step;
-        f_curve(i, 1) = (i+1) % magic_vertices_step + magic_vertices_step;
-        f_curve(i, 2) = (i+1) % magic_vertices_step;
-    }
-    for (int i=magic_vertices_step;i<2*magic_vertices_step;i++){
-        f_curve(i,0) = i % magic_vertices_step;
-        f_curve(i, 2) = (i+1) % magic_vertices_step + magic_vertices_step;
-        f_curve(i, 1) = i;
-    }
 
-//    std::cout<<f_curve <<std::endl;
-//    u_curve = U.block(0,0,magic_vertices_start,3);
-//    f_curve = F.block(0,0,magic_faces_start,3);
-//    u_curve=U;
-//    f_curve=F;
-    // Plot the mesh with pseudocolors
-    igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(u_curve, f_curve);
-
-//    Eigen::MatrixXd C;
-//    igl::jet(W.block(magic_vertices_start+layer*magic_vertices_step,selected,2*magic_vertices_step,1).eval(),true,C);
-//    viewer.data().set_colors(C);
-
-    set_color(viewer);
-
-//    Eigen::MatrixXd pp;
-//    pp = U.block(5972, 0, 30, 3);
-//    Eigen::MatrixXd CC;
-//    igl::jet(W.block(5972, selected,30,1).eval(),true,CC);
-//    viewer.data().set_points(pp,CC);
-
-
-//    pointsToPlot<<170,80,5, 120,60,5;
-    pointsToPlot = U.block(5970, 0, 2, 3);
-    VectorXd WpointsToPlot (pointsToPlot.rows());
-
-//    std::cout<<V.cols()<<std::endl;
-//    std::cout<<T.cols()<<std::endl;
+    pointsToPlot = U.block(5970, 0, 20, 3);
+    VectorXd WpointsToPlot = VectorXd::Zero(pointsToPlot.rows());
 
     tree.init(V,T); // initialize tree
     VectorXi IndexpointsToPlot; // indices of tetrahedra where points are located
     igl::in_element(V,T,pointsToPlot,tree,IndexpointsToPlot); // fill indices
-
 
     igl::slice(T,IndexpointsToPlot,1,TetpointsToPlot);
 
@@ -305,19 +248,50 @@ int main(int argc, char *argv[])
 
     MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
     igl::barycentric_coordinates(pointsToPlot,tetA,tetB,tetC,tetD,barCoordsPoints);
-    std::cout<<barCoordsPoints<<std::endl;
+    std::cout<<barCoordsPoints.size()<<std::endl;
 
 //    MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
-    std::cout<<Wabcd<<std::endl;
+    std::cout<<Wabcd.size()<<std::endl;
+//    std::cout<<Wabcd.size()<<std::endl;
     Array2Xd res;
-    res = Wabcd.array() * barCoordsPoints.array();
-    WpointsToPlot = res.rowwise().sum();
+//    res = Wabcd.array() * barCoordsPoints.array();
+    for (int i=0; i<Wabcd.rows(); i++)
+    {
+        for (int j=0; j<Wabcd.cols(); j++)
+        {
+            WpointsToPlot(i) += Wabcd(i,j)*barCoordsPoints(i,j);
+        }
+    }
 
     std::cout<< WpointsToPlot <<std::endl;
 
     Eigen::MatrixXd CC;
     igl::parula(WpointsToPlot.eval(),false,CC);
-    viewer.data().set_points(pointsToPlot,CC);
+
+    Eigen::MatrixXd u_curve;
+    Eigen::MatrixXi f_curve;
+
+    int magic_vertices_start = 806;
+    int magic_vertices_step = 434;
+    int magic_faces_step = 868;
+
+    u_curve = U.block(magic_vertices_start+layer*magic_vertices_step,0,2*magic_vertices_step,3);
+    f_curve = Eigen::MatrixXi::Zero(magic_faces_step,3);
+    for (int i=0;i<magic_vertices_step;i++){
+        f_curve(i,0) = i % magic_vertices_step;
+        f_curve(i, 1) = (i+1) % magic_vertices_step + magic_vertices_step;
+        f_curve(i, 2) = (i+1) % magic_vertices_step;
+    }
+    for (int i=magic_vertices_step;i<2*magic_vertices_step;i++){
+        f_curve(i,0) = i % magic_vertices_step;
+        f_curve(i, 2) = (i+1) % magic_vertices_step + magic_vertices_step;
+        f_curve(i, 1) = i;
+    }
+
+
+    igl::opengl::glfw::Viewer viewer;
+    viewer.data().set_points(pointsToPlot,sea_green);
+    viewer.data().set_mesh(u_curve, f_curve);
 
 
     viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
@@ -326,8 +300,6 @@ int main(int argc, char *argv[])
     viewer.data().line_width = 1;
 //    viewer.core().background_color.setOnes();
     viewer.callback_key_down = &key_down;
-    viewer.core().is_animating = false;
-    viewer.core().animation_max_fps = 30.;
     cout<<
         "Press '.' to show next weight function."<<endl<<
         "Press ',' to show previous weight function."<<endl<<
