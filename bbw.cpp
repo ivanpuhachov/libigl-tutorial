@@ -49,7 +49,52 @@ void updateEdges(igl::opengl::glfw::Viewer &viewer)
 
 void updatePoints(igl::opengl::glfw::Viewer &viewer)
 {
-    viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
+    Eigen::VectorXd WpointsToPlot = Eigen::VectorXd::Zero(pointsToPlot.rows());
+
+    tree.init(V,T); // initialize tree
+    Eigen::VectorXi IndexpointsToPlot; // indices of tetrahedra where points are located
+    igl::in_element(V,T,pointsToPlot,tree,IndexpointsToPlot); // fill indices
+
+    igl::slice(T,IndexpointsToPlot,1,TetpointsToPlot);
+
+    Eigen::MatrixXd tetA,tetB,tetC,tetD, Wabcd(pointsToPlot.rows(),4);
+    Eigen::VectorXd Wa, Wb, Wc, Wd;
+    igl::slice(V,TetpointsToPlot.col(0),1,tetA);
+    igl::slice(V,TetpointsToPlot.col(1),1,tetB);
+    igl::slice(V,TetpointsToPlot.col(2),1,tetC);
+    igl::slice(V,TetpointsToPlot.col(3),1,tetD);
+
+    igl::slice(W,TetpointsToPlot.col(0),Eigen::VectorXi::Ones(1)*selected,Wa);
+    igl::slice(W,TetpointsToPlot.col(1),Eigen::VectorXi::Ones(1)*selected,Wb);
+    igl::slice(W,TetpointsToPlot.col(2),Eigen::VectorXi::Ones(1)*selected,Wc);
+    igl::slice(W,TetpointsToPlot.col(3),Eigen::VectorXi::Ones(1)*selected,Wd);
+
+    Wabcd.col(0) = Wa;
+    Wabcd.col(1) = Wb;
+    Wabcd.col(2) = Wc;
+    Wabcd.col(3) = Wd;
+
+    Eigen::MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
+    igl::barycentric_coordinates(pointsToPlot,tetA,tetB,tetC,tetD,barCoordsPoints);
+
+
+//    MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
+    std::cout<<Wabcd.size()<<std::endl;
+
+    Eigen::Array2Xd res;
+//    res = Wabcd.array() * barCoordsPoints.array();
+    for (int i=0; i<Wabcd.rows(); i++)
+    {
+        for (int j=0; j<Wabcd.cols(); j++)
+        {
+            WpointsToPlot(i) += Wabcd(i,j)*barCoordsPoints(i,j);
+        }
+    }
+
+    Eigen::MatrixXd CC;
+    igl::parula(WpointsToPlot.eval(),false,CC);
+
+    viewer.data().add_points(pointsToPlot,CC);
 }
 
 bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
@@ -66,14 +111,14 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
             selected = std::min(std::max(selected,0),(int)W.cols()-1);
             updateEdges(viewer);
             break;
-        case '2':
+        case 'N':
             layer++;
             if (layer>=10) {
                 layer = 0;
             }
             updatePoints(viewer);
             break;
-        case '1':
+        case 'M':
             layer--;
             if (layer<=0) {
                 layer = 9;
@@ -199,6 +244,9 @@ int main(int argc, char *argv[])
     igl::readMESH("../cpp_input/mesh.mesh",V,T,F);
     U=V;
     igl::readTGF("../cpp_input/mesh.tgf",C,BE);
+
+    pointsToPlot = U.block(5970, 0, 20, 3);
+
     // retrieve parents for forward kinematics
     igl::directed_edge_parents(BE,P);
 
@@ -220,53 +268,7 @@ int main(int argc, char *argv[])
     // Normalize weights to sum to one
     igl::normalize_row_sums(W,W);
 
-    pointsToPlot = U.block(5970, 0, 20, 3);
-    VectorXd WpointsToPlot = VectorXd::Zero(pointsToPlot.rows());
 
-    tree.init(V,T); // initialize tree
-    VectorXi IndexpointsToPlot; // indices of tetrahedra where points are located
-    igl::in_element(V,T,pointsToPlot,tree,IndexpointsToPlot); // fill indices
-
-    igl::slice(T,IndexpointsToPlot,1,TetpointsToPlot);
-
-    MatrixXd tetA,tetB,tetC,tetD, Wabcd(pointsToPlot.rows(),4);
-    VectorXd Wa, Wb, Wc, Wd;
-    igl::slice(V,TetpointsToPlot.col(0),1,tetA);
-    igl::slice(V,TetpointsToPlot.col(1),1,tetB);
-    igl::slice(V,TetpointsToPlot.col(2),1,tetC);
-    igl::slice(V,TetpointsToPlot.col(3),1,tetD);
-
-    igl::slice(W,TetpointsToPlot.col(0),VectorXi::Ones(1)*selected,Wa);
-    igl::slice(W,TetpointsToPlot.col(1),VectorXi::Ones(1)*selected,Wb);
-    igl::slice(W,TetpointsToPlot.col(2),VectorXi::Ones(1)*selected,Wc);
-    igl::slice(W,TetpointsToPlot.col(3),VectorXi::Ones(1)*selected,Wd);
-
-    Wabcd.col(0) = Wa;
-    Wabcd.col(1) = Wb;
-    Wabcd.col(2) = Wc;
-    Wabcd.col(3) = Wd;
-
-    MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
-    igl::barycentric_coordinates(pointsToPlot,tetA,tetB,tetC,tetD,barCoordsPoints);
-    std::cout<<barCoordsPoints.size()<<std::endl;
-
-//    MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
-    std::cout<<Wabcd.size()<<std::endl;
-//    std::cout<<Wabcd.size()<<std::endl;
-    Array2Xd res;
-//    res = Wabcd.array() * barCoordsPoints.array();
-    for (int i=0; i<Wabcd.rows(); i++)
-    {
-        for (int j=0; j<Wabcd.cols(); j++)
-        {
-            WpointsToPlot(i) += Wabcd(i,j)*barCoordsPoints(i,j);
-        }
-    }
-
-    std::cout<< WpointsToPlot <<std::endl;
-
-    Eigen::MatrixXd CC;
-    igl::parula(WpointsToPlot.eval(),false,CC);
 
     Eigen::MatrixXd u_curve;
     Eigen::MatrixXi f_curve;
@@ -290,14 +292,14 @@ int main(int argc, char *argv[])
 
 
     igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_points(pointsToPlot,sea_green);
     viewer.data().set_mesh(u_curve, f_curve);
 
+    updatePoints(viewer);
 
     viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
-    viewer.data().line_width = 1;
+    viewer.data().line_width = 10;
 //    viewer.core().background_color.setOnes();
     viewer.callback_key_down = &key_down;
     cout<<
