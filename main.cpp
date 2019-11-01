@@ -8,6 +8,7 @@
 #include <igl/boundary_conditions.h>
 #include <igl/directed_edge_parents.h>
 #include <igl/jet.h>
+#include <igl/parula.h>
 #include <igl/lbs_matrix.h>
 #include <igl/normalize_row_sums.h>
 #include <igl/readMESH.h>
@@ -53,7 +54,7 @@ void set_color(igl::opengl::glfw::Viewer &viewer)
     viewer.data().set_colors(CC);
     Eigen::MatrixXd pp;
     pp = U.block(5972+63*layer, 0, 30, 3);
-    igl::jet(W.block(5972+63*layer, selected,30,1).eval(),true,CC);
+    igl::parula(W.block(5972+63*layer, selected,30,1).eval(),false,CC);
     viewer.data().set_points(pp,CC);
     viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
 }
@@ -269,6 +270,8 @@ int main(int argc, char *argv[])
     Eigen::MatrixXd newp(2,3);
     newp<<170,80,5, 120,60,5;
 
+    VectorXd Wnewp (newp.rows());
+
 //    std::cout<<V.cols()<<std::endl;
 //    std::cout<<T.cols()<<std::endl;
 
@@ -284,22 +287,40 @@ int main(int argc, char *argv[])
 
     std::cout<<TetPoints<<std::endl;
 
-    MatrixXd tetA,tetB,tetC,tetD;
+    MatrixXd tetA,tetB,tetC,tetD, Wabcd(newp.rows(),4);
+    VectorXd Wa, Wb, Wc, Wd;
     igl::slice(V,TetPoints.col(0),1,tetA);
     igl::slice(V,TetPoints.col(1),1,tetB);
     igl::slice(V,TetPoints.col(2),1,tetC);
     igl::slice(V,TetPoints.col(3),1,tetD);
 
-    MatrixXd barCoordsPoints;
+    igl::slice(W,TetPoints.col(0),VectorXi::Ones(1)*selected,Wa);
+    igl::slice(W,TetPoints.col(1),VectorXi::Ones(1)*selected,Wb);
+    igl::slice(W,TetPoints.col(2),VectorXi::Ones(1)*selected,Wc);
+    igl::slice(W,TetPoints.col(3),VectorXi::Ones(1)*selected,Wd);
+
+    Wabcd.col(0) = Wa;
+    Wabcd.col(1) = Wb;
+    Wabcd.col(2) = Wc;
+    Wabcd.col(3) = Wd;
+
+    MatrixXd barCoordsPoints(newp.rows(),4);
     igl::barycentric_coordinates(newp,tetA,tetB,tetC,tetD,barCoordsPoints);
     std::cout<<barCoordsPoints<<std::endl;
 
+//    MatrixXd barCoordsPoints(newp.rows(),4);
+    std::cout<<Wabcd<<std::endl;
+    Array2Xd res;
+    res = Wabcd.array() * barCoordsPoints.array();
+    Wnewp = res.rowwise().sum();
 
+    std::cout<< Wnewp <<std::endl;
 
     viewer.data().set_edges(C,BE.block(selected,0,1,2),sea_green);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1;
+//    viewer.core().background_color.setOnes();
     viewer.callback_key_down = &key_down;
     viewer.core().is_animating = false;
     viewer.core().animation_max_fps = 30.;
