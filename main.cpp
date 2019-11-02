@@ -1,50 +1,68 @@
-#include <igl/opengl/glfw/Viewer.h>
+#include <igl/avg_edge_length.h>
 #include <igl/cotmatrix.h>
-#include <igl/gaussian_curvature.h>
-#include <igl/massmatrix.h>
 #include <igl/invert_diag.h>
-#include <igl/jet.h>
+#include <igl/massmatrix.h>
+#include <igl/parula.h>
+#include <igl/per_corner_normals.h>
+#include <igl/per_face_normals.h>
+#include <igl/per_vertex_normals.h>
 #include <igl/principal_curvature.h>
+#include <igl/read_triangle_mesh.h>
+#include <igl/opengl/glfw/Viewer.h>
 
-Eigen:: MatrixXd V;
+Eigen::MatrixXd V;
 Eigen::MatrixXi F;
 
-int main(int argc, char *argv[]) {
-    igl::readOFF("../data/bumpy.off", V,F);
-    std::cout<< "Vertices: " << std::endl << V.size() << std::endl;
-    std::cout<< "Faces: " << std::endl << F.size() << std::endl;
+int main(int argc, char *argv[])
+{
+    using namespace Eigen;
+    std::string filename ="../data/fertility.off";
+    if(argc>1)
+    {
+        filename = argv[1];
+    }
+    // Load a mesh in OFF format
+    igl::read_triangle_mesh(filename, V, F);
 
-//    Extract mean curvature from Laplace-Beltrami operator (cotmatrix)
-    Eigen::MatrixXd HN;
-    Eigen::SparseMatrix<double> L,M,Minv;
+    // Alternative discrete mean curvature
+    MatrixXd HN;
+    SparseMatrix<double> L,M,Minv;
     igl::cotmatrix(V,F,L);
     igl::massmatrix(V,F,igl::MASSMATRIX_TYPE_VORONOI,M);
     igl::invert_diag(M,Minv);
-    HN = -Minv * (L*V);
-    Eigen::VectorXd HH = HN.rowwise().norm();
+    // Laplace-Beltrami of position
+    HN = -Minv*(L*V);
+    // Extract magnitude as mean curvature
+    VectorXd H = HN.rowwise().norm();
 
-//    Compute curvature directions via quadratic fitting
-    Eigen::MatrixXd PD1, PD2;
-    Eigen::VectorXd PV1, PV2;
-    igl::principal_curvature(V,F,PD1, PD2, PV1, PV2);
+    // Compute curvature directions via quadric fitting
+    MatrixXd PD1,PD2;
+    VectorXd PV1,PV2;
+    igl::principal_curvature(V,F,PD1,PD2,PV1,PV2);
+    // mean curvature
+    H = 0.5*(PV1+PV2);
 
-//    mean curvature from main curvatures
-    Eigen::MatrixXd H = 0.5*(PV1+PV2);
-
-
-//    Plot the mesh
     igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(V,F); // copies the mesh into viewer
+    viewer.data().set_mesh(V, F);
 
-    Eigen::MatrixXd C;
-    igl::parula(HH,true,C);
+
+    // Compute pseudocolor
+    MatrixXd C;
+    igl::parula(H,true,C);
     viewer.data().set_colors(C);
 
+    // Average edge length for sizing
     const double avg = igl::avg_edge_length(V,F);
 
-    const Eigen::RowVector3d red(0.8,0.1,0.1), blue(0.1,0.1,0.8);
-    viewer.data().add_edges(V+PD2*avg, V-PD2*avg, red);
-    viewer.data().add_edges(V+PD1*avg, V-PD2*avg, blue);
+    // Draw a blue segment parallel to the minimal curvature direction
+    const RowVector3d red(0.8,0.2,0.2),blue(0.2,0.2,0.8);
+    viewer.data().add_edges(V + PD1*avg, V - PD1*avg, blue);
+
+    // Draw a red segment parallel to the maximal curvature direction
+    viewer.data().add_edges(V + PD2*avg, V - PD2*avg, red);
+
+    // Hide wireframe
+    viewer.data().show_lines = false;
 
     viewer.launch();
 }
