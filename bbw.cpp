@@ -31,14 +31,14 @@
 #include <igl/barycentric_coordinates.h>
 
 const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
-unsigned int selected = 8;
+int selected = 8;
 Eigen::MatrixXd V,W,U,C,M;
 Eigen::MatrixXi T,F,BE;
 Eigen::VectorXi P;
 
-unsigned int layer =0;
+int layer =0;
 
-Eigen::MatrixXd pointsToPlot(20,3);
+Eigen::MatrixXd pointsToPlot;
 igl::AABB<Eigen::MatrixXd,3> tree;
 Eigen::MatrixXi TetpointsToPlot; // indices of vertices associated to tetrahedra where point is located
 Eigen::MatrixXd barCoordsPoints;
@@ -117,7 +117,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
             break;
         case ',':
             selected--;
-            selected %= W.cols();
+            if (selected<0) selected = W.cols()-1;
             updateEdges(viewer);
             break;
         case 'N':
@@ -127,7 +127,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
             break;
         case 'M':
             layer--;
-            layer%=10;
+            if (layer<0) layer =9;
             updatePoints(viewer);
             break;
         default:
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
     U=V;
     igl::readTGF("../cpp_input/mesh.tgf",C,BE);
 
-    pointsToPlot = U.block(5970, 0, 20, 3);
+    pointsToPlot = U.block(5952, 0, 60, 3);
 
     // retrieve parents for forward kinematics
     igl::directed_edge_parents(BE,P);
