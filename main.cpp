@@ -18,6 +18,7 @@
 
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
+#include<Eigen/SparseCholesky>
 #include <vector>
 
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
@@ -176,30 +177,38 @@ int main(int argc, char *argv[])
     MatrixXd V;
     MatrixXi F;
 
-    V_init.resize(7,2);
+    V_init.resize(9,2);
     E.resize(4,2);
-    V_init << -1,-1, -1,1, 1,1, 1,-1, -0.5,-0.5, 0.5, 0.5, 0.5,-0.5;
+    V_init << -1,-1, -1,1, 1,1, 1,-1, -0.5,-0.5, 0.5, 0.5, 0.5,-0.5, -0.5,0.5, 0,0;
     E << 0,1, 1,2, 2,3, 3,0;
-    igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.0005q",V,F);
+    igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.5q",V,F);
 
     int n = V.rows();
 
     SparseMatrix<double> Q,Aeq;
-    igl::harmonic(V,F,4,Q);
+    igl::harmonic(V,F,1,Q);
 
-    VectorXd B, bc(1,1), Beq(n,1), Z;
-    VectorXi b(1,1);
-    b << 4;
-    bc << 1.0;
-    B = VectorXd::Zero(n,1);
+    VectorXd b = VectorXd::Zero(n,1);
+    b(8) = 1;
 
-    igl::min_quad_with_fixed_data<double> mqwf;
-    igl::min_quad_with_fixed_precompute(Q,b,Aeq,true,mqwf);
-    igl::min_quad_with_fixed_solve(mqwf,B,bc,Beq,Z);
+    SimplicialLDLT<SparseMatrix <double>> solver;
+    solver.compute(Q);
+
+    VectorXd Z = solver.solve(b);
+
+//    VectorXd B, bc(1,1), Beq(n,1), Z;
+//    VectorXi b(1,1);
+//    b << 4;
+//    bc << 1.0;
+//    B = VectorXd::Zero(n,1);
+//
+//    igl::min_quad_with_fixed_data<double> mqwf;
+//    igl::min_quad_with_fixed_precompute(Q,b,Aeq,true,mqwf);
+//    igl::min_quad_with_fixed_solve(mqwf,B,bc,Beq,Z);
 
     std::cout<<n<<std::endl;
     std::cout<<Z.size()<<std::endl;
-
+    std::cout<<Z<<std::endl;
 
     MatrixXd V3d(n,3);
     V3d.block(0,0,n,2) = V;
@@ -214,7 +223,7 @@ int main(int argc, char *argv[])
     MatrixXd CC;
     igl::jet(Z.col(0),true,CC);
     viewer.data().set_colors(CC);
-    viewer.data().show_lines = false;
+//    viewer.data().show_lines = false;
     viewer.launch();
 }
 
