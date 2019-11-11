@@ -184,15 +184,19 @@ int main(int argc, char *argv[])
     igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.5q",V,F);
 
     int n = V.rows();
+//    VectorXd Z = V.col(0).array().square()+V.col(1).array().square();
+
+
 
     SparseMatrix<double> Q,Aeq;
-    igl::harmonic(V,F,1,Q);
+//    igl::harmonic(V,F,1,Q);
+    igl::cotmatrix(V,F,Q);
 
     VectorXd b = VectorXd::Zero(n,1);
     b(8) = 1;
 
     SimplicialLDLT<SparseMatrix <double>> solver;
-    solver.compute(Q);
+    solver.compute(-Q);
 
     VectorXd Z = solver.solve(b);
 
