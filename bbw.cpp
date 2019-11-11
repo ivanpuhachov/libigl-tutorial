@@ -19,7 +19,8 @@
 #include <mutex>
 #include <iostream>
 #include <igl/active_set.h>
-
+#include <vector>
+#include <fstream>
 
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
@@ -44,6 +45,25 @@ Eigen::MatrixXi TetpointsToPlot; // indices of vertices associated to tetrahedra
 Eigen::MatrixXd barCoordsPoints;
 Eigen::VectorXd WpointsToPlot;
 
+template<typename M>
+M load_csv (const std::string & path) {
+    using namespace Eigen;
+    std::ifstream indata;
+    indata.open(path);
+    std::string line;
+    std::vector<double> values;
+    uint rows = 0;
+    while (std::getline(indata, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+        while (std::getline(lineStream, cell, ',')) {
+            values.push_back(std::stod(cell));
+        }
+        ++rows;
+    }
+    return Map<const Matrix<typename M::Scalar, M::RowsAtCompileTime, M::ColsAtCompileTime, RowMajor>>(values.data(), rows, values.size()/rows);
+}
+
 void weightPoints(igl::opengl::glfw::Viewer &viewer) {
     WpointsToPlot = Eigen::VectorXd::Zero(pointsToPlot.rows());
 
@@ -61,7 +81,7 @@ void weightPoints(igl::opengl::glfw::Viewer &viewer) {
     Wabcd.col(3) = Wd;
 
     //    MatrixXd barCoordsPoints(pointsToPlot.rows(),4);
-    std::cout<<Wabcd.size()<<std::endl;
+//    std::cout<<Wabcd.size()<<std::endl;
 
     Eigen::Array2Xd res;
 //    res = Wabcd.array() * barCoordsPoints.array();
@@ -132,8 +152,8 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
             break;
         default:
             std::cout<<key<<std::endl;
-            std::cout<<layer<<std::endl;
-            std::cout<<selected<<std::endl;
+//            std::cout<<layer<<std::endl;
+//            std::cout<<selected<<std::endl;
 
     }
     return true;
@@ -242,6 +262,11 @@ bool my_bbw(
     return true;
 }
 
+void reloadPoints() {
+    using namespace Eigen;
+    pointsToPlot = load_csv<MatrixXd>("../cpp_input/points.csv");
+}
+
 int main(int argc, char *argv[])
 {
     using namespace Eigen;
@@ -250,8 +275,9 @@ int main(int argc, char *argv[])
     U=V;
     igl::readTGF("../cpp_input/mesh.tgf",C,BE);
 
-    pointsToPlot = U.block(5952, 0, 60, 3);
-
+//    pointsToPlot = U.block(5952, 0, 60, 3);
+//    pointsToPlot = load_csv<MatrixXd>("../cpp_input/points.csv");
+    reloadPoints();
     // retrieve parents for forward kinematics
     igl::directed_edge_parents(BE,P);
 
