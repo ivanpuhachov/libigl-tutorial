@@ -1,4 +1,4 @@
-# when curve in edit mode
+# when curve in edit mode -> prints coordinates
 
 import pymel.core as pm
 import maya.cmds as mc
@@ -7,5 +7,3 @@ import csv
 sel = pm.selected()
 for i in sel[0]:
     print(i.getCV)
-
-
