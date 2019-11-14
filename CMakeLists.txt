@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(exam)
+project(libigl-tutorial-fundamental)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -13,7 +13,8 @@ find_package(LIBIGL REQUIRED QUIET)
 
 # Add your project files
 add_executable(main_bin main.cpp)
-target_link_libraries(main_bin igl::core igl::opengl_glfw igl::triangle igl::opengl_glfw_imgui)
+#target_link_libraries(main_bin igl::core igl::opengl_glfw igl::triangle igl::opengl_glfw_imgui)
+target_link_libraries(main_bin igl::core igl::triangle)
 
 add_executable(example_bin 403.cpp)
 target_link_libraries(example_bin igl::core igl::opengl_glfw)
