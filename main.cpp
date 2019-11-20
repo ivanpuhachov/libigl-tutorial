@@ -179,25 +179,64 @@ int main(int argc, char *argv[])
     E.resize(4,2);
     V_init << -1,-1, -1,1, 1,1, 1,-1, -0.5,-0.5, 0.5, 0.5, 0.5,-0.5, -0.5,0.5, 0,0;
     E << 0,1, 1,2, 2,3, 3,0;
-    igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.5q",V,F);
+    igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.3q",V,F);
 
     int n = V.rows();
 //    VectorXd Z = V.col(0).array().square()+V.col(1).array().square();
 
 
 
-    SparseMatrix<double> Q,Aeq;
-//    igl::harmonic(V,F,1,Q);
-    igl::cotmatrix(V,F,Q);
+    SparseMatrix<double> L,Aeq;
+//    igl::harmonic(V,F,1,L);
+    igl::cotmatrix(V,F,L);
 
     VectorXd b = VectorXd::Zero(n,1);
     b(8) = 1;
 
+//    std::cout<<L<<std::endl<<std::endl;
+//    std::cout<<b<<std::endl;
+
+
     SimplicialLDLT<SparseMatrix <double>> solver;
-    solver.compute(-Q);
+    solver.compute(L.transpose() * L);
 
-    VectorXd Z = solver.solve(b);
+    VectorXd Z = solver.solve(L.transpose()*b);
+    std::cout<<"----------- pseudo-inverse solution:"<<std::endl;
+    std::cout<<Z<<std::endl<<std::endl;
+//    std::cout<<L*Z<<std::endl<<std::endl;
 
+//    Eigen::NaturalOrdering<int> perm;
+    typedef Eigen::SparseQR<Eigen::SparseMatrix <double>, Eigen::NaturalOrdering<int>> T;
+    T sqr;
+    T::PermutationType perm;
+    sqr.compute(L);
+    SparseMatrix<double> r,q,rr,r0;
+
+    perm = sqr.colsPermutation();
+    r = sqr.matrixR();
+    q = sqr.matrixQ();
+    int rank = sqr.rank();
+
+    VectorXd bb = q.transpose() * b;
+    rr = r.block(0,0,rank,rank);
+    r0 = r.block(0,rank,rank,n-rank);
+
+    VectorXd y0 = VectorXd::Zero(n-rank);
+    VectorXd y1;
+
+    solver.compute(rr);
+    y1 = solver.solve(bb.head(rank)-r0*y0);
+
+    VectorXd y(n), x(n);
+    y << y1,y0;
+    x = perm*y;
+
+//    std::cout<<r<<std::endl<<std::endl;
+//    std::cout<<q<<std::endl<<std::endl;
+//    std::cout<<L*x<<std::endl<<std::endl;
+//    std::cout<<sqr.rank() <<std::endl;
+
+//    std::cout<<qq.transpose()*qq<<std::endl<<std::endl;
 //    VectorXd B, bc(1,1), Beq(n,1), Z;
 //    VectorXi b(1,1);
 //    b << 4;
