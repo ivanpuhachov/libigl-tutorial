@@ -7,7 +7,7 @@
 
 
 //#include <igl/jet.h>
-//#include <igl/opengl/glfw/Viewer.h>
+#include <igl/opengl/glfw/Viewer.h>
 #include <igl/bbw.h>
 #include <igl/harmonic.h>
 #include <mutex>
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
     E.resize(4,2);
     V_init << -1,-1, -1,1, 1,1, 1,-1, -0.5,-0.5, 0.5, 0.5, 0.5,-0.5, -0.5,0.5, 0,0;
     E << 0,1, 1,2, 2,3, 3,0;
-    igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.3q",V,F);
+    igl::triangle::triangulate(V_init,E,MatrixXd(),"a0.01q",V,F);
 
     int n = V.rows();
 //    VectorXd Z = V.col(0).array().square()+V.col(1).array().square();
@@ -201,8 +201,8 @@ int main(int argc, char *argv[])
     solver.compute(L.transpose() * L);
 
     VectorXd Z = solver.solve(L.transpose()*b);
-    std::cout<<"----------- pseudo-inverse solution:"<<std::endl;
-    std::cout<<Z<<std::endl<<std::endl;
+//    std::cout<<"----------- pseudo-inverse solution:"<<std::endl;
+//    std::cout<<Z<<std::endl<<std::endl;
 //    std::cout<<L*Z<<std::endl<<std::endl;
 
 //    Eigen::NaturalOrdering<int> perm;
@@ -230,6 +230,17 @@ int main(int argc, char *argv[])
     VectorXd y(n), x(n);
     y << y1,y0;
     x = perm*y;
+
+    MatrixXd V3d(n,3);
+    V3d.block(0,0,n,2) = V;
+    V3d.block(0,2,n,1) = Z.col(0);
+
+        // Plot the generated mesh
+    igl::opengl::glfw::Viewer viewer;
+//    igl::opengl::glfw::imgui::ImGuiMenu menu;
+//    viewer.plugins.push_back(&menu);
+    viewer.data().set_mesh(V3d,F);
+    viewer.launch();
 
 //    std::cout<<r<<std::endl<<std::endl;
 //    std::cout<<q<<std::endl<<std::endl;

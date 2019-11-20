@@ -14,7 +14,7 @@ find_package(LIBIGL REQUIRED QUIET)
 # Add your project files
 add_executable(main_bin main.cpp)
 #target_link_libraries(main_bin igl::core igl::opengl_glfw igl::triangle igl::opengl_glfw_imgui)
-target_link_libraries(main_bin igl::core igl::triangle)
+target_link_libraries(main_bin igl::core igl::triangle igl::opengl_glfw)
 
 add_executable(example_bin 403.cpp)
 target_link_libraries(example_bin igl::core igl::opengl_glfw)
